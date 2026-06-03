@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe — Neon Edition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', monospace;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,255,100,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 80% 100%, rgba(0,120,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .ttt-title {
+      font-size: clamp(22px, 5vw, 34px);
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: #00ff66;
+      text-shadow: 0 0 20px rgba(0,255,102,0.6), 0 0 50px rgba(0,255,102,0.2);
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .ttt-subtitle {
+      font-size: 10px;
+      letter-spacing: 6px;
+      color: #3399ff;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .score-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    .score-card {
+      background: #111;
+      border: 1px solid #1a1a1a;
+      border-radius: 10px;
+      padding: 10px 20px;
+      text-align: center;
+      min-width: 80px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .score-card.active-p1 { border-color: #00ff66; box-shadow: 0 0 14px rgba(0,255,102,0.35); }
+    .score-card.active-p2 { border-color: #3399ff; box-shadow: 0 0 14px rgba(51,153,255,0.35); }
+
+    .score-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+
+    .score-p1 .score-label { color: #00ff66; }
+    .score-p2 .score-label { color: #3399ff; }
+    .score-draw .score-label { color: #555; }
+
+    .score-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .score-draw .score-num { color: #555; }
+
+    .vs-badge {
+      font-size: 10px;
+      color: #2a2a2a;
+      letter-spacing: 2px;
+    }
+
+    .status-bar {
+      font-size: 13px;
+      letter-spacing: 2px;
+      margin-bottom: 1.5rem;
+      height: 22px;
+      transition: all 0.3s;
+      text-align: center;
+    }
+
+    .status-p1 { color: #00ff66; text-shadow: 0 0 10px rgba(0,255,102,0.5); }
+    .status-p2 { color: #3399ff; text-shadow: 0 0 10px rgba(51,153,255,0.5); }
+    .status-win { color: #ffe566; text-shadow: 0 0 10px rgba(255,229,102,0.5); font-size: 15px; }
+    .status-draw { color: #666; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 4px;
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 14px;
+      padding: 4px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.9);
+      margin-bottom: 1.5rem;
+    }
+
+    .cell {
+      background: #0d0d0d;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.12s, border-color 0.2s, box-shadow 0.2s;
+      border: 1px solid #1a1a1a;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken):not([data-over]) {
+      background: #161616;
+      border-color: #2a2a2a;
+      transform: scale(1.04);
+    }
+
+    .cell.taken { cursor: default; }
+
+    .cell.x-cell {
+      border-color: rgba(0,255,102,0.2);
+      background: rgba(0,255,102,0.03);
+    }
+
+    .cell.o-cell {
+      border-color: rgba(51,153,255,0.2);
+      background: rgba(51,153,255,0.03);
+    }
+
+    .cell.win-cell.x-cell {
+      border-color: #00ff66;
+      background: rgba(0,255,102,0.1);
+      animation: pulse-green 1.2s ease-in-out infinite;
+    }
+
+    .cell.win-cell.o-cell {
+      border-color: #3399ff;
+      background: rgba(51,153,255,0.1);
+      animation: pulse-blue 1.2s ease-in-out infinite;
+    }
+
+    .cell-emoji {
+      display: block;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transform: scale(0);
+    }
+
+    .cell-emoji.show { transform: scale(1); }
+
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: inset 0 0 14px rgba(0,255,102,0.2), 0 0 16px rgba(0,255,102,0.3); }
+      50% { box-shadow: inset 0 0 22px rgba(0,255,102,0.4), 0 0 30px rgba(0,255,102,0.55); }
+    }
+
+    @keyframes pulse-blue {
+      0%, 100% { box-shadow: inset 0 0 14px rgba(51,153,255,0.2), 0 0 16px rgba(51,153,255,0.3); }
+      50% { box-shadow: inset 0 0 22px rgba(51,153,255,0.4), 0 0 30px rgba(51,153,255,0.55); }
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: transparent;
+      border: 1px solid #222;
+      border-radius: 8px;
+      color: #555;
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 10px 22px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .btn:hover { border-color: #444; color: #aaa; background: #111; }
+
+    .btn-new {
+      border-color: #00ff66;
+      color: #00ff66;
+      box-shadow: 0 0 8px rgba(0,255,102,0.15);
+    }
+
+    .btn-new:hover {
+      background: rgba(0,255,102,0.08);
+      box-shadow: 0 0 16px rgba(0,255,102,0.35);
+      color: #00ff66;
+    }
+
+    .turn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: #333;
+      margin-top: 1.4rem;
+    }
+
+    .turn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    .turn-dot.p1 { background: #00ff66; box-shadow: 0 0 6px #00ff66; }
+    .turn-dot.p2 { background: #3399ff; box-shadow: 0 0 6px #3399ff; }
+    .turn-dot.off { background: #1e1e1e; box-shadow: none; }
+
+    @media (max-width: 420px) {
+      .board {
+        grid-template-columns: repeat(3, 90px);
+        grid-template-rows: repeat(3, 90px);
+      }
+      .cell { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="ttt-title">TIC TAC TOE</div>
+    <div class="ttt-subtitle">Player vs Player</div>
+
+    <div class="score-bar">
+      <div class="score-card score-p1" id="card-p1">
+        <div class="score-label">P1 &nbsp;⚡</div>
+        <div class="score-num" id="score-p1">0</div>
+      </div>
+      <span class="vs-badge">VS</span>
+      <div class="score-card score-draw">
+        <div class="score-label">DRAWS</div>
+        <div class="score-num" id="score-draw">0</div>
+      </div>
+      <span class="vs-badge">VS</span>
+      <div class="score-card score-p2" id="card-p2">
+        <div class="score-label">🎮 &nbsp;P2</div>
+        <div class="score-num" id="score-p2">0</div>
+      </div>
+    </div>
+
+    <div class="status-bar status-p1" id="status">⚡ PLAYER 1'S TURN</div>
+
+    <div class="board" id="board">
+      <div class="cell" data-i="0"><span class="cell-emoji" id="e0"></span></div>
+      <div class="cell" data-i="1"><span class="cell-emoji" id="e1"></span></div>
+      <div class="cell" data-i="2"><span class="cell-emoji" id="e2"></span></div>
+      <div class="cell" data-i="3"><span class="cell-emoji" id="e3"></span></div>
+      <div class="cell" data-i="4"><span class="cell-emoji" id="e4"></span></div>
+      <div class="cell" data-i="5"><span class="cell-emoji" id="e5"></span></div>
+      <div class="cell" data-i="6"><span class="cell-emoji" id="e6"></span></div>
+      <div class="cell" data-i="7"><span class="cell-emoji" id="e7"></span></div>
+      <div class="cell" data-i="8"><span class="cell-emoji" id="e8"></span></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-new" onclick="newRound()">▶ New Round</button>
+      <button class="btn" onclick="resetAll()">↺ Reset All</button>
+    </div>
+
+    <div class="turn-indicator">
+      <div class="turn-dot p1" id="dot-p1"></div>
+      <span id="turn-text" style="color:#444">P1 ⚡ vs 🎮 P2</span>
+      <div class="turn-dot off" id="dot-p2"></div>
+    </div>
+  </div>
+
+  <script>
+    const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    const P1 = { emoji: '⚡', cls: 'x-cell', marker: 'X' };
+    const P2 = { emoji: '🎮', cls: 'o-cell', marker: 'O' };
+
+    let board = Array(9).fill(null);
+    let current = P1;
+    let gameOver = false;
+    let scores = { p1: 0, p2: 0, draw: 0 };
+
+    const cells = document.querySelectorAll('.cell');
+    const statusEl = document.getElementById('status');
+    const dotP1 = document.getElementById('dot-p1');
+    const dotP2 = document.getElementById('dot-p2');
+    const cardP1 = document.getElementById('card-p1');
+    const cardP2 = document.getElementById('card-p2');
+
+    function updateTurnUI() {
+      if (gameOver) return;
+      if (current === P1) {
+        dotP1.className = 'turn-dot p1';
+        dotP2.className = 'turn-dot off';
+        cardP1.classList.add('active-p1');
+        cardP1.classList.remove('active-p2');
+        cardP2.classList.remove('active-p1', 'active-p2');
+        statusEl.className = 'status-bar status-p1';
+        statusEl.textContent = "⚡ PLAYER 1'S TURN";
+      } else {
+        dotP1.className = 'turn-dot off';
+        dotP2.className = 'turn-dot p2';
+        cardP2.classList.add('active-p2');
+        cardP2.classList.remove('active-p1');
+        cardP1.classList.remove('active-p1', 'active-p2');
+        statusEl.className = 'status-bar status-p2';
+        statusEl.textContent = "🎮 PLAYER 2'S TURN";
+      }
+    }
+
+    function checkWin() {
+      for (const [a, b, c] of WINS) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return [a, b, c];
+        }
+      }
+      return null;
+    }
+
+    cells.forEach(cell => {
+      cell.addEventListener('click', () => {
+        const i = parseInt(cell.dataset.i);
+        if (gameOver || board[i]) return;
+
+        board[i] = current.marker;
+        cell.classList.add('taken', current.cls);
+        const emoji = document.getElementById('e' + i);
+        emoji.textContent = current.emoji;
+        setTimeout(() => emoji.classList.add('show'), 10);
+
+        const win = checkWin();
+        if (win) {
+          gameOver = true;
+          win.forEach(idx => cells[idx].classList.add('win-cell'));
+          if (current === P1) {
+            scores.p1++;
+            document.getElementById('score-p1').textContent = scores.p1;
+            statusEl.className = 'status-bar status-win';
+            statusEl.textContent = '🏆 PLAYER 1 WINS!';
+            cardP1.classList.add('active-p1');
+            dotP1.className = 'turn-dot p1';
+            dotP2.className = 'turn-dot off';
+          } else {
+            scores.p2++;
+            document.getElementById('score-p2').textContent = scores.p2;
+            statusEl.className = 'status-bar status-win';
+            statusEl.textContent = '🏆 PLAYER 2 WINS!';
+            cardP2.classList.add('active-p2');
+            dotP2.className = 'turn-dot p2';
+            dotP1.className = 'turn-dot off';
+          }
+        } else if (board.every(v => v !== null)) {
+          gameOver = true;
+          scores.draw++;
+          document.getElementById('score-draw').textContent = scores.draw;
+          statusEl.className = 'status-bar status-draw';
+          statusEl.textContent = "🤝 IT'S A DRAW!";
+          dotP1.className = 'turn-dot off';
+          dotP2.className = 'turn-dot off';
+          cardP1.classList.remove('active-p1');
+          cardP2.classList.remove('active-p2');
+        } else {
+          current = current === P1 ? P2 : P1;
+          updateTurnUI();
+        }
+      });
+    });
+
+    function newRound() {
+      board = Array(9).fill(null);
+      gameOver = false;
+      current = P1;
+      cells.forEach(cell => { cell.className = 'cell'; });
+      for (let i = 0; i < 9; i++) {
+        const e = document.getElementById('e' + i);
+        e.textContent = '';
+        e.className = 'cell-emoji';
+      }
+      cardP1.classList.remove('active-p1', 'active-p2');
+      cardP2.classList.remove('active-p1', 'active-p2');
+      updateTurnUI();
+    }
+
+    function resetAll() {
+      scores = { p1: 0, p2: 0, draw: 0 };
+      document.getElementById('score-p1').textContent = 0;
+      document.getElementById('score-p2').textContent = 0;
+      document.getElementById('score-draw').textContent = 0;
+      newRound();
+    }
+
+    updateTurnUI();
+  </script>
+</body>
+</html>
